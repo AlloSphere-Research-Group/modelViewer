@@ -1,16 +1,17 @@
 cmake_minimum_required(VERSION 3.0)
 set(app_path ${CMAKE_CURRENT_LIST_DIR})
-#get_filename_component(app_name ${app_path} NAME)
-set(app_name casm_viewer)
+get_filename_component(app_name ${app_path} NAME)
+# Use this line instead to give a custom name
+#set(app_name casm_viewer)
 project(${app_name})
 option(AL_VERBOSE_OUTPUT "" ON)
 
 # app config user specified
-include("vdv_group/app_config.cmake")
+include("app_config.cmake")
 
 set(allolib_dir ${CMAKE_CURRENT_LIST_DIR}/${allolib_directory})
 
-# inlcude allolib target
+# include allolib target
 
 if (DEFINED CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_CONFIGURATION_TYPES "Debug;Release")
@@ -28,7 +29,7 @@ add_subdirectory(${allolib_dir} ${FULL_AL_BUILD_PATH})
 
 add_executable(${app_name} ${app_files_list})
 
-target_include_directories(${app_name} PUBLIC ${allolib_dir}/modules)
+#target_include_directories(${app_name} PUBLIC ${allolib_dir}/modules)
 
 set_target_properties(${app_name} PROPERTIES
   DEBUG_POSTFIX d
@@ -38,12 +39,6 @@ set_target_properties(${app_name} PROPERTIES
   CXX_STANDARD 14
   CXX_STANDARD_REQUIRED ON
 )
-
-#list(APPEND app_include_dirs
-#${OPENVR_INCLUDE_DIR}
-
-#  ${allolib_directory}/external/Gamma
-#)
 
 # flags
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
@@ -106,6 +101,7 @@ if (AL_VERBOSE_OUTPUT)
 	message("app path: ${app_path}")
 	message("app name: ${app_name}")
 	message("allolib path: ${allolib_dir}")
+  message("app files: ${app_files_list}")
 	message("include dirs: ${app_include_dirs}")
 	message("link libs: ${app_link_libs}")
   message("definitions: ${app_definitions}")
