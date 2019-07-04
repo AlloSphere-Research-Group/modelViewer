@@ -14,8 +14,11 @@
 
 using namespace al;
 
+struct State {
+  float a = 0.f;  // current rotation angle
+};
 
-class MyApp: public BaseCompositeApp {
+class MyApp: public DistributedAppWithState<State> {
 public:
   ParameterBool mVr {"VR", "", 0.0};
   ParameterBool mUseTexture {"UseTexture", "", 1.0};
@@ -34,10 +37,13 @@ public:
   Vec3f scene_min, scene_max, scene_center;
   Texture tex;
   std::vector<Mesh> meshes;
-  float a = 0.f;  // current rotation angle
+
+  MyApp(uint8_t rank) : DistributedAppWithState<State>(rank) {
+
+  }
 
   void onInit() {
-    oscDomain()->parameterServer() << mModelFile << mModelTexture;
+    oscDomain()->parameterServer() << mModelFile << mModelTexture << mColor << mUseTexture;
   }
 
   void onCreate() {
@@ -50,10 +56,23 @@ public:
       }
     });
 
-    loadModel("data/ducky.obj");
-    loadTexture("data/hubble.jpg");
+    mModelFile.registerChangeCallback([&](std::string model) {
+      loadModel(model);
+    });
+    mModelTexture.registerChangeCallback([&](std::string texture) {
+      loadTexture(texture);
+    });
+
+    if (rank == 0) {
+      mModelTexture.set("data/hubble.jpg");
+      mModelFile.set("data/ducky.obj");
+    }
 
     ParameterGUI::initialize();
+  }
+
+  void onAnimate(double dt) {
+    state().a += 0.5f;
   }
 
   void drawScene(Graphics &g) {
@@ -70,8 +89,7 @@ public:
     g.translate(0, 0, -4.0);
 
     // rotate it around the y axis
-    g.rotate(a, 0.f, 1.f, 0.f);
-    a += 0.5;
+    g.rotate(state().a, 0.f, 1.f, 0.f);
 
     // scale the whole asset to fit into our view frustum
     float tmp = scene_max[0] - scene_min[0];
@@ -132,8 +150,7 @@ public:
     if (fileSelectorModel.drawFileSelector()) {
       auto selection = fileSelectorModel.getSelection();
       if (selection.count() > 0) {
-        loadModel(selection[0].filepath());
-
+        mModelFile.set(selection[0].filepath());
       }
     }
     if (ImGui::Button("Select Texture")) {
@@ -146,7 +163,7 @@ public:
     if (fileSelectorTexture.drawFileSelector()) {
       auto selection = fileSelectorTexture.getSelection();
       if (selection.count() > 0) {
-        loadTexture(selection[0].filepath());
+        mModelTexture.set(selection[0].filepath());
       }
     }
 
@@ -160,8 +177,9 @@ public:
     // Dekstop scene will have reddish background and gui.
     g.clear(0.3, 0, 0);
     drawScene(g);
-
-    drawGui();
+    if (rank == 0) {
+      drawGui();
+    }
   }
 
   void onExit() override {
@@ -210,9 +228,17 @@ public:
 
 int main(int argc, char *argv[])
 {
-  MyApp app;
-  app.start();
+  if (argc > 1 || !osc::Recv::portAvailable(9010, "0.0.0.0")) { // Run replica
+    MyApp app(1);
+    app.setTitle("REPLICA");
+    app.start();
 
+  } else {
+    MyApp app(0);
+    app.setTitle("PRIMARY");
+    app.start();
+
+  }
 
   return 0;
 }
