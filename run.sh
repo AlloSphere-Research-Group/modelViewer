@@ -1,3 +1,10 @@
 #!/bin/bash
+(
+    cd build/release
+    make -j 7
+)
 
-allolib/run.sh `pwd`
+result=$?
+if [ ${result} == 0 ]; then
+    ./bin/modelviewer
+fi
