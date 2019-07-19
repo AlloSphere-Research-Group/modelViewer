@@ -64,8 +64,8 @@ public:
     });
 
     if (rank == 0) {
-      mModelTexture.set("data/hubble.jpg");
-      mModelFile.set("data/ducky.obj");
+      mModelTexture.set("bin/data/hubble.jpg");
+      mModelFile.set("bin/data/ducky.obj");
     }
 
     ParameterGUI::initialize();
