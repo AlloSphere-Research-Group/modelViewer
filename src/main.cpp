@@ -212,7 +212,8 @@ public:
   void loadTexture(std::string fileName) {
     loadLock.lock();
 
-    auto imageData = imgModule::loadImage(File::conformPathToOS(fileName));
+    fileName = File::conformPathToOS(fileName);
+    auto imageData = imgModule::loadImage(fileName);
     if (imageData.data.size() != 0) {
       std::cout << "loaded image size: " << imageData.width << ", " << imageData.height << std::endl;
       if (tex.created()) { tex.destroy(); }
