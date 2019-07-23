@@ -1,6 +1,6 @@
 #!/bin/bash
 
-git lfs intall
+git lfs install
 git lfs pull
 
 (
