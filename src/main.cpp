@@ -1,143 +1,95 @@
-#include <memory>
-#include <iostream>
-#include <vector>
 
-#include "al/util/ui/al_ParameterGUI.hpp"
-#include "al/util/ui/al_FileSelector.hpp"
-#include "al/core/graphics/al_Shapes.hpp"
 
-#include "al_ext/distributed/al_App.hpp"
-#include "al_ext/assets3d/al_Asset.hpp"
-#include "module/img/loadImage.hpp"
+#include "al/app/al_DistributedApp.hpp"
+#include "al/graphics/al_Shapes.hpp"
+#include "al/ui/al_FileSelector.hpp"
+#include "al/ui/al_ParameterGUI.hpp"
+
+#include "al_ext/openvr/al_OpenVRDomain.hpp"
 
 #include "Gamma/Oscillator.h"
+
+#include "modelmanager.hpp"
+
+#include <iostream>
+#include <memory>
+#include <vector>
 
 using namespace al;
 
 struct State {
-  float a = 0.f;  // current rotation angle
+  float a = 0.f; // current rotation angle
 };
 
-class MyApp: public DistributedAppWithState<State> {
+class MyApp : public DistributedAppWithState<State> {
 public:
-  ParameterBool mVr {"VR", "", 0.0};
-  ParameterBool mUseTexture {"UseTexture", "", 1.0};
-  ParameterColor mColor {"Color"};
+  ParameterBool mVr{"VR", "", 0.0};
   ParameterGUI gui;
   FileSelector fileSelectorModel;
   FileSelector fileSelectorTexture;
 
-  // Shared state parameters
-  ParameterString mModelFile {"ModelFile"};
-  ParameterString mModelTexture {"ModelTexture"};
-
   SearchPaths searchpaths;
-  std::mutex loadLock;
-  Scene* ascene = nullptr;
-  Vec3f scene_min, scene_max, scene_center;
-  Texture tex;
-  std::vector<Mesh> meshes;
 
-  MyApp(uint8_t rank) : DistributedAppWithState<State>(rank) {
+  std::shared_ptr<OpenVRDomain> vrDomain;
 
+  ModelManager modelManager;
+
+  MyApp() : DistributedAppWithState<State>() {}
+
+  void onInit() override {
+    oscDomain()->parameterServer()
+        << modelManager.mModelFile << modelManager.mModelTexture
+        << modelManager.mColor << modelManager.mUseTexture
+        << modelManager.autoRotate << modelManager.rotAngle;
   }
 
-  void onInit() {
-    oscDomain()->parameterServer() << mModelFile << mModelTexture << mColor << mUseTexture;
-  }
-
-  void onCreate() {
+  void onCreate() override {
     mVr.registerChangeCallback([&](float value) {
-      if (value != 0.0) {
-        enableVR();
-        setOpenVRDrawFunction(std::bind(&MyApp::drawVr, this, std::placeholders::_1));
+      if (value != 0.0f) {
+        vrDomain = OpenVRDomain::enableVR(this);
+        vrDomain->setDrawFunction(
+            std::bind(&MyApp::drawVr, this, std::placeholders::_1));
       } else {
-        disableVR();
+        OpenVRDomain::disableVR(this, vrDomain);
       }
     });
-
-    mModelFile.registerChangeCallback([&](std::string model) {
-      loadModel(model);
-    });
-    mModelTexture.registerChangeCallback([&](std::string texture) {
-      loadTexture(texture);
-    });
-
     if (rank == 0) {
-      mModelTexture.set("bin/data/hubble.jpg");
-      mModelFile.set("bin/data/ducky.obj");
+      modelManager.mModelFile.set("data/ducky.obj");
+      modelManager.mModelTexture.set("data/hubble.jpg");
     }
 
-    ParameterGUI::initialize();
+    imguiInit();
   }
 
-  void onAnimate(double dt) {
-    state().a += 0.5f;
+  void onAnimate(double /*dt*/) override {
+    if (isPrimary() && (modelManager.autoRotate != 0.0f)) {
+      modelManager.rotAngle = modelManager.rotAngle + 0.5f;
+    }
   }
 
-  void drawScene(Graphics &g) {
-    loadLock.lock();
-    // This function is used by both the VR and the desktop draw calls.
+  //  void onMessage(osc::Message &m) override { m.print(); }
 
-//    g.clear(0.1);
-
-    g.depthTesting(true);
-    g.lighting(true);
-    //g.light().dir(1.f, 1.f, 2.f);
-
-    g.pushMatrix();
-    g.translate(0, 0, -4.0);
-
-    // rotate it around the y axis
-    g.rotate(state().a, 0.f, 1.f, 0.f);
-
-    // scale the whole asset to fit into our view frustum
-    float tmp = scene_max[0] - scene_min[0];
-    tmp = std::max(scene_max[1] - scene_min[1], tmp);
-    tmp = std::max(scene_max[2] - scene_min[2], tmp);
-    tmp = 2.f / tmp;
-    g.scale(tmp);
-
-    // center the model
-    g.translate(-scene_center);
-
-    bool useTexture = mUseTexture == 1.0f;
-
-    if (useTexture == 1.0f) {
-      tex.bind(0);
-      g.texture(); // use texture to color the mesh
-    } else {
-      g.color(mColor);
-    }
-    // draw all the meshes in the scene
-    for (auto& m : meshes) {
-        g.draw(m);
-    }
-    if (useTexture == 1.0f) {
-      tex.unbind(0);
-    }
-
-    g.popMatrix();
-    loadLock.unlock();
-  }
+  void onExit() override { imguiShutdown(); }
 
   void drawVr(Graphics &g) {
     // HMD scene will have blueish background
-    g.clear(0.0, 0.3, 0);
-    drawScene(g);
+    g.clear(0.0, 0.3f, 0);
+    modelManager.drawModel(g);
   }
 
   void drawGui() {
 
-    ParameterGUI::beginDraw();
+    imguiBeginFrame();
     ParameterGUI::beginPanel("OBJ loader");
 #ifdef AL_EXT_OPENVR
     // Only show VR button if there is support for OpenVR
     ParameterGUI::draw(&mVr);
 #endif
-    ParameterGUI::draw(&mUseTexture);
-    if (mUseTexture == 0.0f) {
-      ParameterGUI::draw(&mColor);
+    ParameterGUI::draw(&modelManager.mUseTexture);
+    ParameterGUI::draw(&modelManager.autoRotate);
+    ParameterGUI::draw(&modelManager.rotAngle);
+    if (modelManager.mUseTexture == 0.0f) {
+      ParameterGUI::draw(&modelManager.mColor);
     }
 
     if (ImGui::Button("Select Model")) {
@@ -150,7 +102,7 @@ public:
     if (fileSelectorModel.drawFileSelector()) {
       auto selection = fileSelectorModel.getSelection();
       if (selection.count() > 0) {
-        mModelFile.set(selection[0].filepath());
+        modelManager.mModelFile.set(selection[0].filepath());
       }
     }
     if (ImGui::Button("Select Texture")) {
@@ -163,83 +115,31 @@ public:
     if (fileSelectorTexture.drawFileSelector()) {
       auto selection = fileSelectorTexture.getSelection();
       if (selection.count() > 0) {
-        mModelTexture.set(selection[0].filepath());
+        modelManager.mModelTexture.set(selection[0].filepath());
       }
     }
 
     ParameterGUI::endPanel();
-    ParameterGUI::endDraw();
+    imguiEndFrame();
   }
 
   void onDraw(Graphics &g) override {
-    graphicsDomain()->navControl().active(!ParameterGUI::usingInput());
+    omniRendering->navControl().active(!ParameterGUI::usingInput());
 
     // Dekstop scene will have reddish background and gui.
-    g.clear(0.3, 0, 0);
-    drawScene(g);
+    g.clear(0.3f, 0, 0);
+    modelManager.drawModel(g);
     if (rank == 0) {
       drawGui();
+      imguiDraw();
     }
   }
-
-  void onExit() override {
-
-    ParameterGUI::cleanup();
-  }
-
-  void loadModel(std::string fileName) {
-    loadLock.lock();
-    // load in a "scene"
-    ascene = Scene::import(fileName);
-    if (ascene == nullptr) {
-      printf("error reading %s\n", fileName.c_str());
-      loadLock.unlock();
-      return;
-    } else {
-      ascene->getBounds(scene_min, scene_max);
-      scene_center = (scene_min + scene_max) / 2.f;
-      ascene->print();
-    }
-    // extract meshes from scene
-    meshes.clear();
-    meshes.resize(ascene->meshes());
-    for (int i = 0; i < ascene->meshes(); i += 1) {
-        ascene->mesh(i, meshes[i]);
-    }
-    loadLock.unlock();
-  }
-
-  void loadTexture(std::string fileName) {
-    loadLock.lock();
-
-    fileName = File::conformPathToOS(fileName);
-    auto imageData = imgModule::loadImage(fileName);
-    if (imageData.data.size() != 0) {
-      std::cout << "loaded image size: " << imageData.width << ", " << imageData.height << std::endl;
-      if (tex.created()) { tex.destroy(); }
-      tex.create2D(imageData.width, imageData.height);
-      tex.submit(imageData.data.data(), GL_RGBA, GL_UNSIGNED_BYTE);
-    } else {
-      std::cout << "failed to load image " << fileName << std:: endl;
-    }
-    loadLock.unlock();
-  }
-
 };
 
-int main(int argc, char *argv[])
-{
-  if (argc > 1 || !osc::Recv::portAvailable(9010, "0.0.0.0")) { // Run replica
-    MyApp app(1);
-    app.setTitle("REPLICA");
-    app.start();
+int main() {
 
-  } else {
-    MyApp app(0);
-    app.setTitle("PRIMARY");
-    app.start();
-
-  }
+  MyApp app;
+  app.start();
 
   return 0;
 }
