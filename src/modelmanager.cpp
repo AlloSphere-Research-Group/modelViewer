@@ -3,53 +3,73 @@
 ModelManager::ModelManager() {
 
   mModelFile.registerChangeCallback(
-      [&](std::string model) { loadModel(model); });
+      [&](std::string model) {
+    std::cout << "Loading model: " << model <<std::endl;
+    loadModel(model);
+  });
   mModelTexture.registerChangeCallback(
       [&](std::string texture) { loadTexture(texture); });
 }
 
 void ModelManager::loadModel(std::string fileName) {
   loadLock.lock();
-  // load in a "scene"
-  ascene = Scene::import(fileName);
-  if (ascene == nullptr) {
-    printf("error reading %s\n", fileName.c_str());
-    loadLock.unlock();
-    return;
-  } else {
-    ascene->getBounds(scene_min, scene_max);
-    scene_center = (scene_min + scene_max) / 2.f;
-    ascene->print();
-  }
-  // extract meshes from scene
-  meshes.clear();
-  meshes.resize(ascene->meshes());
-  for (int i = 0; i < ascene->meshes(); i += 1) {
-    ascene->mesh(i, meshes[i]);
-  }
+  mModelToLoad = fileName;
   loadLock.unlock();
 }
 
 void ModelManager::loadTexture(std::string fileName) {
   loadLock.lock();
-
-  fileName = File::conformPathToOS(fileName);
-  auto imageData = Image(fileName);
-  if (imageData.array().size() != 0) {
-    std::cout << "loaded image size: " << imageData.width() << ", "
-              << imageData.height() << std::endl;
-    if (tex.created()) {
-      tex.destroy();
-    }
-    tex.create2D(imageData.width(), imageData.height());
-    tex.submit(imageData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
-  } else {
-    std::cout << "failed to load image " << fileName << std::endl;
-  }
+  mTextureToLoad = fileName;
   loadLock.unlock();
 }
 
 void ModelManager::drawModel(Graphics &g) {
+  loadLock.lock();
+  std::string fileName = mModelToLoad;
+  std::string textureFileName = mTextureToLoad;
+  loadLock.unlock();
+
+  if (fileName.size() > 0) {
+    loadLock.lock();
+    mModelToLoad = "";
+    loadLock.unlock();
+    // load in a "scene"
+    ascene = Scene::import(fileName);
+    if (ascene == nullptr) {
+      printf("error reading %s\n", fileName.c_str());
+    } else {
+      ascene->getBounds(scene_min, scene_max);
+      scene_center = (scene_min + scene_max) / 2.f;
+      ascene->print();
+    }
+    // extract meshes from scene
+    meshes.clear();
+    meshes.resize(ascene->meshes());
+    for (int i = 0; i < ascene->meshes(); i += 1) {
+      ascene->mesh(i, meshes[i]);
+    }
+  }
+
+  if (textureFileName.size() > 0) {
+    loadLock.lock();
+    mTextureToLoad = "";
+    loadLock.unlock();
+
+    textureFileName = File::conformPathToOS(textureFileName);
+    auto imageData = Image(textureFileName);
+    if (imageData.array().size() != 0) {
+      std::cout << "loaded image size: " << imageData.width() << ", "
+                << imageData.height() << std::endl;
+      if (tex.created()) {
+        tex.destroy();
+      }
+      tex.create2D(imageData.width(), imageData.height());
+      tex.submit(imageData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+    } else {
+      std::cout << "failed to load image " << fileName << std::endl;
+    }
+  }
+
   loadLock.lock();
 
   g.depthTesting(true);

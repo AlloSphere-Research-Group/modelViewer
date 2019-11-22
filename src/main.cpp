@@ -63,7 +63,11 @@ public:
 
   void onAnimate(double /*dt*/) override {
     if (isPrimary() && (modelManager.autoRotate != 0.0f)) {
-      modelManager.rotAngle = modelManager.rotAngle + 0.5f;
+      float newAngle = modelManager.rotAngle + 0.5f;
+      if (newAngle > 360) {
+        newAngle -= 360;
+      }
+      modelManager.rotAngle = newAngle;
     }
   }
 
@@ -124,12 +128,14 @@ public:
   }
 
   void onDraw(Graphics &g) override {
-    omniRendering->navControl().active(!ParameterGUI::usingInput());
+    if (!hasCapability(Capability::CAP_OMNIRENDERING)) {
+      navControl().active(!ParameterGUI::usingInput());
+    }
 
     // Dekstop scene will have reddish background and gui.
     g.clear(0.3f, 0, 0);
     modelManager.drawModel(g);
-    if (rank == 0) {
+    if (hasCapability(Capability::CAP_RENDERING)) {
       drawGui();
       imguiDraw();
     }

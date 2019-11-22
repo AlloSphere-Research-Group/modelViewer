@@ -39,6 +39,10 @@ public:
     void loadTexture(std::string fileName);
 
     void drawModel(Graphics &g);
+
+private:
+    std::string mModelToLoad;
+    std::string mTextureToLoad;
 };
 
 #endif // MODELMANAGER_HPP

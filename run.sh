@@ -5,5 +5,6 @@
 
 result=$?
 if [ ${result} == 0 ]; then
-    ./bin/modelviewer
+  cd bin
+    ./modelviewer
 fi

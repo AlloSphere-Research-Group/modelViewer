@@ -5,6 +5,8 @@ set(APP_NAME modelviewer)
 
 project(${APP_NAME})
 
+set(CMAKE_CXX_STANDARD 14)
+
 # path to main source file
 add_executable(${APP_NAME} src/main.cpp src/modelmanager.cpp)
 
