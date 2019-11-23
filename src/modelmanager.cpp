@@ -9,6 +9,9 @@ ModelManager::ModelManager() {
   });
   mModelTexture.registerChangeCallback(
       [&](std::string texture) { loadTexture(texture); });
+
+      parentPickable.containChildren = true;
+
 }
 
 void ModelManager::loadModel(std::string fileName) {
@@ -42,11 +45,19 @@ void ModelManager::drawModel(Graphics &g) {
       scene_center = (scene_min + scene_max) / 2.f;
       ascene->print();
     }
+    // Remove child pickables from parent pickable
+    for (auto *p : parentPickable.children) {
+      delete p;
+    }
+    parentPickable.children.clear();
     // extract meshes from scene
     meshes.clear();
     meshes.resize(ascene->meshes());
     for (int i = 0; i < ascene->meshes(); i += 1) {
       ascene->mesh(i, meshes[i]);
+      PickableBB *child = new PickableBB;
+      child->set(meshes[i]);
+      parentPickable.addChild(child);
     }
   }
 

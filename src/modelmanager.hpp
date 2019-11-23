@@ -5,6 +5,7 @@
 #include "al/io/al_File.hpp"
 #include "al/graphics/al_Image.hpp"
 #include "al/ui/al_Parameter.hpp"
+#include "al/ui/al_Pickable.hpp"
 
 #include "al_ext/assets3d/al_Asset.hpp"
 
@@ -31,6 +32,8 @@ public:
     Vec3f scene_min, scene_max, scene_center;
     Texture tex;
     std::vector<Mesh> meshes;
+
+    PickableBB parentPickable;
 
     ModelManager();
 
