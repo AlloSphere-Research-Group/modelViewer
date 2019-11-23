@@ -79,8 +79,6 @@ public:
       }
       state().nav = nav();
       prepareGui();
-    } else {
-      nav() = state().nav;
     }
   }
 
@@ -144,6 +142,8 @@ public:
   void onDraw(Graphics &g) override {
     if (!hasCapability(Capability::CAP_OMNIRENDERING)) {
       navControl().active(!ParameterGUI::usingInput());
+    } else {
+      nav() = state().nav;
     }
 
     g.clear(mBackground);
