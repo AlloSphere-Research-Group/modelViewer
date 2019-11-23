@@ -28,10 +28,11 @@ public:
   ParameterBool mVr{"VR", "", 0.0};
   ParameterColor mBackground{"background", "", {0,0,0}};
   ParameterGUI gui;
+
+  PresetHandler presetHandler;
+
   FileSelector fileSelectorModel;
   FileSelector fileSelectorTexture;
-
-  SearchPaths searchpaths;
 
   std::shared_ptr<OpenVRDomain> vrDomain;
 
@@ -49,6 +50,12 @@ public:
      oscDomain()->parameterServer()
         << modelManager.parentPickable.pose;
     oscDomain()->parameterServer()
+        << mBackground;
+
+    presetHandler << modelManager.mModelFile << modelManager.mModelTexture
+        << modelManager.mColor << modelManager.mUseTexture
+        << modelManager.autoRotate << modelManager.rotAngle
+        << modelManager.parentPickable.pose
         << mBackground;
   }
 
@@ -80,7 +87,6 @@ public:
         modelManager.rotAngle = newAngle;
       }
       
-      modelManager.parentPickable.pose = nav().pos() * -1;
       prepareGui();
     }
   }
@@ -105,11 +111,12 @@ public:
 #endif
     ParameterGUI::draw(&mBackground);
     ParameterGUI::draw(&modelManager.mUseTexture);
-    ParameterGUI::draw(&modelManager.autoRotate);
-    ParameterGUI::draw(&modelManager.rotAngle);
-    if (modelManager.mUseTexture == 0.0f) {
+        if (modelManager.mUseTexture == 0.0f) {
       ParameterGUI::draw(&modelManager.mColor);
     }
+    ParameterGUI::draw(&modelManager.autoRotate);
+    ParameterGUI::draw(&modelManager.rotAngle);
+
 
     if (ImGui::Button("Select Model")) {
       if (fileSelectorModel.isActive()) {
@@ -138,6 +145,8 @@ public:
       }
     }
 
+    ParameterGUI::draw(&modelManager.parentPickable.pose);
+    ParameterGUI::drawPresetHandler(&presetHandler, 10, 4);
     ParameterGUI::endPanel();
     imguiEndFrame();
   }
