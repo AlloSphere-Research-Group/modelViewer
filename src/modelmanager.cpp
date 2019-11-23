@@ -40,25 +40,27 @@ void ModelManager::drawModel(Graphics &g) {
     ascene = Scene::import(fileName);
     if (ascene == nullptr) {
       printf("error reading %s\n", fileName.c_str());
+      
     } else {
       ascene->getBounds(scene_min, scene_max);
       scene_center = (scene_min + scene_max) / 2.f;
       ascene->print();
+      // Remove child pickables from parent pickable
+      for (auto *p : parentPickable.children) {
+        delete p;
+      }
+      parentPickable.children.clear();
+      // extract meshes from scene
+      meshes.clear();
+      meshes.resize(ascene->meshes());
+      for (int i = 0; i < ascene->meshes(); i += 1) {
+        ascene->mesh(i, meshes[i]);
+        PickableBB *child = new PickableBB;
+        child->set(meshes[i]);
+        parentPickable.addChild(child);
+      }
     }
-    // Remove child pickables from parent pickable
-    for (auto *p : parentPickable.children) {
-      delete p;
-    }
-    parentPickable.children.clear();
-    // extract meshes from scene
-    meshes.clear();
-    meshes.resize(ascene->meshes());
-    for (int i = 0; i < ascene->meshes(); i += 1) {
-      ascene->mesh(i, meshes[i]);
-      PickableBB *child = new PickableBB;
-      child->set(meshes[i]);
-      parentPickable.addChild(child);
-    }
+
   }
 
   if (textureFileName.size() > 0) {
