@@ -90,7 +90,7 @@ void ModelManager::drawModel(Graphics &g) {
   // g.light().dir(1.f, 1.f, 2.f);
 
   g.pushMatrix();
-  g.translate(0, 0, -4.0);
+  g.translate(parentPickable.pose.get().pos());
 
   // rotate it around the y axis
   g.rotate(rotAngle, 0.f, 1.f, 0.f);

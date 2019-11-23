@@ -20,7 +20,7 @@
 using namespace al;
 
 struct State {
-  Nav nav;
+  float a;
 };
 
 class MyApp : public DistributedAppWithState<State> {
@@ -46,6 +46,8 @@ public:
         << modelManager.mModelFile << modelManager.mModelTexture
         << modelManager.mColor << modelManager.mUseTexture
         << modelManager.autoRotate << modelManager.rotAngle;
+     oscDomain()->parameterServer()
+        << modelManager.parentPickable.pose;
     oscDomain()->parameterServer()
         << mBackground;
   }
@@ -77,7 +79,8 @@ public:
         }
         modelManager.rotAngle = newAngle;
       }
-      state().nav = nav();
+      
+      modelManager.parentPickable.pose = nav().pos() * -1;
       prepareGui();
     }
   }
@@ -143,7 +146,7 @@ public:
     if (!hasCapability(Capability::CAP_OMNIRENDERING)) {
       navControl().active(!ParameterGUI::usingInput());
     } else {
-      omniRendering->nav() = state().nav;
+      // omniRendering->nav() = state().nav;
     }
 
     g.clear(mBackground);
