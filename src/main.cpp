@@ -143,7 +143,7 @@ public:
     if (!hasCapability(Capability::CAP_OMNIRENDERING)) {
       navControl().active(!ParameterGUI::usingInput());
     } else {
-      nav() = state().nav;
+      omniRendering->nav() = state().nav;
     }
 
     g.clear(mBackground);
