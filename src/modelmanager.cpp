@@ -85,13 +85,13 @@ void ModelManager::drawModel(Graphics &g) {
 
   loadLock.lock();
 
-  g.depthTesting(true);
+  gl::depthTesting(true);
   g.lighting(true);
   // g.light().dir(1.f, 1.f, 2.f);
 
   g.pushMatrix();
   g.translate(parentPickable.pose.get().pos());
-
+  g.rotate(parentPickable.pose.get().quat());
   // rotate it around the y axis
   g.rotate(rotAngle, 0.f, 1.f, 0.f);
 
