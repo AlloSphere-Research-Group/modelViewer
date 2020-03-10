@@ -26,10 +26,12 @@ struct State {
 class MyApp : public DistributedAppWithState<State> {
 public:
   ParameterBool mVr{"VR", "", 0.0};
-  ParameterColor mBackground{"background", "", {0,0,0}};
+  ParameterColor mBackground{"background", "", {0, 0, 0}};
   ParameterGUI gui;
 
   PresetHandler presetHandler;
+  PresetSequencer presetSequencer;
+  SequenceRecorder recorder;
 
   FileSelector fileSelectorModel;
   FileSelector fileSelectorTexture;
@@ -47,16 +49,13 @@ public:
         << modelManager.mModelFile << modelManager.mModelTexture
         << modelManager.mColor << modelManager.mUseTexture
         << modelManager.autoRotate << modelManager.rotAngle;
-     oscDomain()->parameterServer()
-        << modelManager.parentPickable.pose;
-    oscDomain()->parameterServer()
-        << mBackground;
+    oscDomain()->parameterServer() << modelManager.parentPickable.pose;
+    oscDomain()->parameterServer() << mBackground;
 
     presetHandler << modelManager.mModelFile << modelManager.mModelTexture
-        << modelManager.mColor << modelManager.mUseTexture
-        << modelManager.autoRotate << modelManager.rotAngle
-        << modelManager.parentPickable.pose
-        << mBackground;
+                  << modelManager.mColor << modelManager.mUseTexture
+                  << modelManager.autoRotate << modelManager.rotAngle
+                  << modelManager.parentPickable.pose << mBackground;
   }
 
   void onCreate() override {
@@ -86,7 +85,7 @@ public:
         }
         modelManager.rotAngle = newAngle;
       }
-      
+
       prepareGui();
     }
   }
@@ -100,7 +99,6 @@ public:
     modelManager.drawModel(g);
   }
 
-
   void prepareGui() {
 
     imguiBeginFrame();
@@ -111,12 +109,11 @@ public:
 #endif
     ParameterGUI::draw(&mBackground);
     ParameterGUI::draw(&modelManager.mUseTexture);
-        if (modelManager.mUseTexture == 0.0f) {
+    if (modelManager.mUseTexture == 0.0f) {
       ParameterGUI::draw(&modelManager.mColor);
     }
     ParameterGUI::draw(&modelManager.autoRotate);
     ParameterGUI::draw(&modelManager.rotAngle);
-
 
     if (ImGui::Button("Select Model")) {
       if (fileSelectorModel.isActive()) {
@@ -147,6 +144,10 @@ public:
 
     ParameterGUI::draw(&modelManager.parentPickable.pose);
     ParameterGUI::drawPresetHandler(&presetHandler, 10, 4);
+    static int currentSequence = 0;
+    ParameterGUI::drawPresetSequencer(&presetSequencer, currentSequence);
+
+    ParameterGUI::drawSequenceRecorder(&recorder);
     ParameterGUI::endPanel();
     imguiEndFrame();
   }
